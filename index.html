@@ -2,51 +2,171 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Direct Video Stream</title>
+    <!-- Meta tags to prevent Android from zooming/scaling the page -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Force Landscape Fullscreen Video</title>
     <style>
-        * {
-            box-sizing: border-box;
+        /* Pure black background */
+        body, html {
             margin: 0;
             padding: 0;
-        }
-        html, body {
             width: 100%;
             height: 100%;
             background-color: #000000;
-            overflow: hidden;
-            position: fixed;
+            overflow: hidden; /* Prevent scrollbars */
+            position: fixed; /* Lock screen position */
+            touch-action: none; /* Disable touch gestures */
         }
-        .video-wrapper {
+        /* Container jo video ko 100% scale par fit karega */
+        #player-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #000;
+        }
+        /* Force Landscape Style (rotate the container) */
+        @media screen and (orientation: portrait) {
+            #player-container {
+                transform: rotate(90deg);
+                transform-origin: center center;
+                /* Swap width/height due to rotation */
+                width: 100vh;
+                height: 100vw;
+                /* Ensure it covers the portrait screen after rotation */
+                top: calc((100vw - 100vh) / 2);
+                left: calc((100vh - 100vw) / 2);
+            }
+        }
+
+        /* The actual YouTube iframe player */
+        #youtube-player {
+            width: 100vw;
+            height: 100vh;
+            border: none;
+            pointer-events: none; /* Initially block touch from reaching player */
+        }
+        
+        /* Overlay element to detect the first touch and trigger API */
+        #touch-overlay {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-        }
-        /* Android screen par exact fit aur non-zoomable layout */
-        iframe {
-            width: 100vw;
-            height: 56.25vw; /* 16:9 Aspect Ratio */
-            max-height: 100vh;
-            max-width: 177.78vh; /* 16:9 Aspect Ratio */
-            border: none;
-            outline: none;
+            background: transparent;
+            z-index: 10; /* Placed above the player */
+            cursor: pointer;
         }
     </style>
 </head>
 <body>
 
-    <div class="video-wrapper">
-        <iframe 
-            src="https://www.youtube.com/embed/GiL0zf5fPlk?autoplay=1&mute=0&controls=1&modestbranding=1&rel=0&playsinline=1" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-            allowfullscreen>
-        </iframe>
+    <!-- Container for the player -->
+    <div id="player-container">
+        <div id="touch-overlay"></div> <!-- Detects user interaction -->
+        <div id="youtube-player"></div> <!-- Div where API injects the iframe -->
     </div>
+
+    <script>
+        // 1. Load the IFrame Player API code asynchronously.
+        var tag = document.createElement('script');
+        tag.src = "https://www.youtube.com/iframe_api";
+        var firstScriptTag = document.getElementsByTagName('script')[0];
+        firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+        // 2. This function creates an <iframe> (and YouTube player) after the API code downloads.
+        var player;
+        function onYouTubeIframeAPIReady() {
+            player = new YT.Player('youtube-player', {
+                videoId: 'GiL0zf5fPlk', // Your Video ID
+                playerVars: {
+                    'autoplay': 1,           // Autoplay on load
+                    'controls': 0,           // Hide default controls
+                    'showinfo': 0,           // Hide video title/uploader
+                    'modestbranding': 1,     // Minimal YouTube branding
+                    'rel': 0,                // No related videos at end
+                    'playsinline': 1,        // Crucial: Don't force fullscreen on iOS
+                    'loop': 1,               // Loop the video
+                    'playlist': 'GiL0zf5fPlk' // Required for loop
+                },
+                events: {
+                    'onReady': onPlayerReady,
+                    'onStateChange': onPlayerStateChange
+                }
+            });
+        }
+
+        // 3. The API will call this function when the video player is ready.
+        function onPlayerReady(event) {
+            // Mute the video initially to allow autoplay on most browsers
+            event.target.mute();
+            event.target.playVideo();
+            
+            // Setup the touch overlay to trigger fullscreen and landscape lock
+            setupTouchInteraction();
+        }
+
+        function onPlayerStateChange(event) {
+            // Optional: Handle video state changes if needed
+        }
+
+        // 4. Function to handle user touch event (the key to your request)
+        function setupTouchInteraction() {
+            const overlay = document.getElementById('touch-overlay');
+            const container = document.getElementById('player-container');
+
+            overlay.addEventListener('click', function() {
+                // A. Try to enter native Fullscreen mode
+                requestFullscreen(container);
+                
+                // B. Try to unlock screen orientation to Landscape (Works on most Androids)
+                lockOrientationLandscape();
+
+                // C. Enable controls after entering full screen/landscape
+                player.unMute();
+                player.setOption('related_videos', 'hide_related_videos', true); // Additional help hiding rel videos
+            });
+        }
+
+        // Helper function to request Fullscreen
+        function requestFullscreen(element) {
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.mozRequestFullScreen) { // Firefox
+                element.mozRequestFullScreen();
+            } else if (element.webkitRequestFullscreen) { // Chrome, Safari and Opera
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) { // IE/Edge
+                element.msRequestFullscreen();
+            }
+        }
+
+        // Helper function to lock Orientation to Landscape
+        function lockOrientationLandscape() {
+            // Check if the API is supported by the browser
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').then(function() {
+                    // Orientation locked successfully
+                    console.log('Orientation locked to landscape');
+                }).catch(function(error) {
+                    // Lock failed (user might have prevented it in browser settings)
+                    console.error('Orientation lock failed:', error);
+                });
+            } else if (screen.mozLockOrientation) { // Firefox
+                screen.mozLockOrientation('landscape');
+            } else if (screen.msLockOrientation) { // IE/Edge
+                console.error('MS Lock Orientation not supported');
+            } else {
+                console.error('Screen Orientation API not supported by this browser');
+            }
+        }
+    </script>
 
 </body>
 </html>
