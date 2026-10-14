@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direct Video Stream</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        /* Container jo YouTube player ko full screen aur clean banayega */
+        .video-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .video-container iframe {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 100vw;
+            height: 56.25vw; /* 16:9 Aspect Ratio */
+            min-height: 100vh;
+            min-width: 177.77vh; /* 16:9 Aspect Ratio */
+            transform: translate(-50%, -50%);
+            pointer-events: auto; /* Play/Pause ke liye allow karega */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="video-container">
+        <!-- YouTube embed with parameters to hide title, logo, and loop/autoplay -->
+        <iframe 
+            src="https://www.youtube.com/embed/GiL0zf5fPlk?autoplay=1&mute=0&controls=1&modestbranding=1&rel=0&loop=1&playlist=GiL0zf5fPlk" 
+            title="Video Stream" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen>
+        </iframe>
+    </div>
+
+</body>
+</html>
